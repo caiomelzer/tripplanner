@@ -1,5 +1,8 @@
+var ObjectId = require('mongoose').Types.ObjectId;
 var Place = require('../app/models/place');
 var Trip = require('../app/models/trip');
+var Transport = require('../app/models/transport');
+var Category = require('../app/models/category');
 
 module.exports = function(app, passport) {
 
@@ -53,13 +56,12 @@ module.exports = function(app, passport) {
         }
         else{
             Trip.find({owner_id : req.query.owner_id})
-            .sort({createdAt: 'desc'})
+            .sort({'trips.items.createdAt': 'asc'})
             .exec(function(err, trips) {
                 if (err) return console.error(err);
                 return res.json(trips);
             });
         }
-
     });
 
     app.get('/trip/:id', isLoggedIn, function(req, res, err) {
@@ -69,19 +71,35 @@ module.exports = function(app, passport) {
         }
         else{
             Trip.find({_id : req.params.id})
-            .sort({createdAt: 'desc'})
+            .sort({startAt: 'asc'})
             .exec(function(err, trips) {
                 if (err) return console.error(err, req.query);
                 return res.json(trips);
             });
         }
+    });
 
+    // CATEGORY SECTION =========================
+    app.get('/category', isLoggedIn, function(req, res, err) {
+        Category.find({})
+        .exec(function(err, categories) {
+            if (err) return console.error(err);
+            return res.json(categories);
+        });
+    });
+
+    // PLACE SECTION =========================
+    app.get('/transport', isLoggedIn, function(req, res, err) {
+        Transport.find({})
+        .exec(function(err, trips) {
+            if (err) return console.error(err);
+            return res.json(transport);
+        });
     });
 
     // PLACE SECTION =========================
     app.post('/place', isLoggedIn, function(req, res, err) {
-        
-        if(!req.body.place_url || !req.body.place_name || !req.body.place_name || !req.body.trip_id){
+        if(!req.body.place_url || !req.body.place_name || !req.body.trip_id){
             return console.error(err);
         }
         else{
@@ -90,38 +108,56 @@ module.exports = function(app, passport) {
                 place_url : req.body.place_id,
                 place_name : req.body.place_name
             });
-              
-            newPlace.save(function(err, newPlace) {
-                if (err) return console.error(err);
-                Trip.findByIdAndUpdate(
-                    req.body.trip_id,
-                    { $push: {
-                            "places": {
-                                place_id : req.body.place_url,
-                                place_url : req.body.place_id,
-                                place_name : req.body.place_name
+
+
+            Category.findOne({ '_id' :  ObjectId(req.body.category_id) }, function(err, categories) {
+                // if there are any errors, return the error
+                if (err)
+                    return done(err);
+                console.log(categories)
+                if(categories){
+                    // create the user
+                    newPlace.save(function(err, newPlace) {
+                        if (err) return console.error(err);
+                        Trip.findByIdAndUpdate(
+                            req.body.trip_id,
+                            { $push: {
+                                    "places": {
+                                        place_id : req.body.place_url,
+                                        place_url : req.body.place_id,
+                                        place_name : req.body.place_name
+                                    },
+                                    "items": {
+                                        place_id : req.body.place_url,
+                                        category_id : req.body.category_id,
+                                        category_name : categories.category_name,
+                                        category_icon : categories.category_icon,
+                                        startAt : req.body.placeStartAt,
+                                        endAt : req.body.placeEndAt,
+                                        place_url : req.body.place_id,
+                                        place_name : req.body.place_name,
+                                        cost : 10
+
+                                    }
+                                }
                             },
-                            "items": {
-                                place_id : req.body.place_url,
-                                startAt : req.body.startAt,
-                                endAt : req.body.endAt,
-                                place_url : req.body.place_id,
-                                place_name : req.body.place_name
-                            }
-                        }
-                    },
-                    { safe: true, upsert: true},
-                    function(err, newPlace) {
-                        if(err){
-                            console.log(err);
-                            return res.send(err);
-                        }
-                        return res.json(newPlace);
-                    }    
-                );
-            }); 
+                            { safe: true, upsert: true},
+                            function(err, newPlace) {
+                                if(err){
+                                    console.log(err);
+                                    return res.send(err);
+                                }
+                                return res.json(newPlace);
+                            }    
+                        );
+                    }); 
+                }    
+
+            });
+
+
+            
         }
-    
     });
 
 

@@ -9,19 +9,11 @@ var itemSchema = mongoose.Schema({
     startAt     : Date,
     endAt   	: Date,
     description : String,
-    category	: String,
+    category	: [ { type: Schema.Types.ObjectId, ref: 'Category' } ],
     cost		: String,
-    transport	: [
-    	startAt     : Date,
-		departure	: String,
-		arrival		: String,
-	    endAt   	: Date,
-	    description : String,
-	    category	: String,
-	    cost		: String
-    ],
-    place_name   : String,
-    place_url    : String
+    transport	: [ { type: Schema.Types.ObjectId, ref: 'Transport' } ],
+    place_name  : String,
+    place_url   : String
 
 });
 

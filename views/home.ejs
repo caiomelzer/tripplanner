@@ -133,29 +133,35 @@
           <div class="well page" id="guide">
             <h1 class="header">Guide
               <p class="bs-component btn-group-sm">
-                <a href="javascript:void(0)" class="btn btn-primary btn-fab pull-right" data-toggle="modal" data-target="#trip-add">
+                <a href="javascript:void(0)" class="btn btn-primary btn-fab pull-right" data-toggle="modal" data-target="#item-add">
                   <i class="material-icons">add</i>
                 </a>
               </p>
             </h1>
+            <hr>
             <div class="form-group label-floating is-empty">
               <label for="select111" class="control-label">Trip</label>
               <select id="guide_trip_select" class="form-control"></select>
             </div>
-              <div class="bs-component">
-                <div class="list-group" id="list_guide_items">
-                  
-                </div>
-              </div>  
-            </div> 
-          </div>
+            <div class="bs-component">
+              <div class="list-group" id="list_guide_items">
+                
+              </div>
+            </div>  
+          </div> 
           <div class="well page" id="locations">
-            <h1 class="header">Locations</h1>
+            <h1 class="header">Locations
+            <p class="bs-component btn-group-sm">
+              <a href="javascript:void(0)" class="btn btn-primary btn-fab pull-right" data-toggle="modal" data-target="#trip-add">
+                <i class="material-icons">add</i>
+              </a>
+            </p>  
+            </h1>
             <hr>
-            <div class="form-group label-floating is-empty">
-              <label for="i5" class="control-label">New Place</label>
-              <input type="place" class="form-control" id="place-1">
-            </div>
+            <div class="bs-component">
+              <div class="list-group" id="list_trips">
+              </div> 
+            </div>    
           </div>
         </div>
       </div>
@@ -204,12 +210,45 @@
           <select id="trip_list_select" class="form-control"></select>
         </div>
         <div class="form-group label-floating is-empty">
+          <label for="select112" class="control-label">Category</label>
+          <select id="place_category" class="form-control"></select>
+        </div>
+        <div class="form-group label-floating is-empty">
           <label for="i5" class="control-label">Start At</label>
           <input type="tripDateTime" class="form-control" id="placeStartAt">
         </div>
         <div class="form-group label-floating is-empty">
           <label for="i5" class="control-label">Start At</label>
           <input type="tripDateTime" class="form-control" id="placeEndAt">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary add_place btn-raised" data-dismiss="modal">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="item-add" class="modal fade" tabindex="-1" style="display: none;">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h4 class="modal-title">Add new Item</h4>
+      </div>
+      <div class="modal-body">
+        <div class="form-group label-floating is-empty">
+          <label for="select111" class="control-label">Type</label>
+          <select id="trip_list_select" class="form-control"></select>
+        </div>
+        <div class="form-group label-floating is-empty">
+          <label for="i5" class="control-label">Start At</label>
+          <input type="tripDateTime" class="form-control" id="itemStartAt">
+        </div>
+        <div class="form-group label-floating is-empty">
+          <label for="i5" class="control-label">Start At</label>
+          <input type="tripDateTime" class="form-control" id="itemEndAt">
         </div>
       </div>
       <div class="modal-footer">
@@ -314,10 +353,11 @@
 <!-- Material Design for Bootstrap -->
 <script src="static/dist/js/material.js"></script>
 <script src="static/dist/js/ripples.min.js"></script>
+
 <script>
   $.material.init();
 </script>
-
+<script src="http://fezvrasta.github.io/snackbarjs/dist/snackbar.min.js"></script>
 
 <!-- Sliders -->
 <script src="//cdnjs.cloudflare.com/ajax/libs/noUiSlider/6.2.0/jquery.nouislider.min.js"></script>
@@ -334,7 +374,8 @@
 //
 function initApp(){
   localStorage.setItem('_id','<%= user._id %>');
-  //app.listTrip(localStorage.getItem('_id'));
+  var place_category = app.populateListCategory();
+  $('#place_category').html(place_category);
 }
 
 $('.add_trip').on('click', function(){
@@ -352,21 +393,27 @@ $('#guide_trip_select').on('change', function(){
       type: 'GET',
       jsonp: true,
       success: function(resp){
-        console.info(resp);
         if(resp[0].items.length > 0){
-          var html = new EJS({url: '/static/list_guide_items.ejs'}).render({items:resp[0].items});
+          var items = sortByKey(resp[0].items, 'startAt');
+          var html = new EJS({url: '/static/list_guide_items.ejs'}).render({items:items});
         }
         else{
           var html = 'You have no items yet!';
         }
+        localStorage.setItem('currentTripStartDate', resp[0].startAt);
+        localStorage.setItem('currentTripEndDate', resp[0].endAt);
+        localStorage.setItem('currentTrip',$('#guide_trip_select').val());
+        adjustTripDateRange();
         $('#list_guide_items').html(html);
+        $('.item-guide').on('click', function(){
+          console.info('dasdasda', this);
+        });
       }
     })
 });
 
 var app = {
   addTrip: function(trip) {
-    console.info('Start to add trip', trip);
     $.ajax({
       url:'/trip',
       type: 'POST',
@@ -387,6 +434,23 @@ var app = {
       $('#tripEndAt').val('');
     });
   },
+  populateListCategory: function(){
+    var list = '<option value=""></option>';
+    $.ajax({
+      url:'/category',
+      type: 'GET',
+      async: false,
+      jsonp: true,
+      success: function(resp){
+        if(resp.length > 0){
+          $.each(resp, function(i,v){
+            list += '<option value="'+v._id+'">'+v.category_name+'</option>';
+          });
+        }
+      }
+    });
+    return list;
+  },
   populateListTrip: function(user){
     var list = '<option value=""></option>';
     $.ajax({
@@ -398,18 +462,14 @@ var app = {
         owner_id : user
       },
       success: function(resp){
-        console.info('entr');
         if(resp.length > 0){
-          console.info('entr2');
           $.each(resp, function(i,v){
             console.info(v._id);
             list += '<option value="'+v._id+'">'+v.trip_name+'</option>';
           });
         }
-        console.info(resp,'dsadasdas');
       }
     });
-    console.info('teste',list);
     return list;
   },
   listTrip: function(user){
@@ -421,7 +481,6 @@ var app = {
         owner_id : user
       },
       success: function(resp){
-        console.info(resp);
         if(resp.length > 0){
           var html = new EJS({url: '/static/list_trips.ejs'}).render({trips:resp});
         }
@@ -433,12 +492,12 @@ var app = {
     });
   },
   addPlace:  function(place){
-    console.info("place_id added", place);
     $.ajax({
       url:'/place',
       type: 'POST',
       jsonp: true,
       data: {
+        category_id: $('#place_category').val(),
         place_id : place.place_id,
         place_name : place.name,
         place_url : place.url,
@@ -453,8 +512,46 @@ var app = {
   }
 };
 
-$('input[type=tripDate]').bootstrapMaterialDatePicker({ weekStart : 0, time: false });
-$('input[type=tripDateTime]').bootstrapMaterialDatePicker({ weekStart : 0});
+
+function adjustTripDateRange(){
+  $('#placeStartAt').bootstrapMaterialDatePicker('setMinDate', moment(localStorage.getItem('currentTripStartDate')));
+  $('#placeStartAt').bootstrapMaterialDatePicker('setMaxDate', moment(localStorage.getItem('currentTripEndDate')));
+  $('#placeEndAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' });
+  $('#placeStartAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' }).on('change', function(e, date){
+    $('#placeEndAt').bootstrapMaterialDatePicker('setMinDate', date);
+    $('#placeEndAt').bootstrapMaterialDatePicker('setMaxDate', moment(localStorage.getItem('currentTripEndDate')));
+  });
+
+  $('#itemStartAt').bootstrapMaterialDatePicker('setMinDate', moment(localStorage.getItem('currentTripStartDate')));
+  $('#itemStartAt').bootstrapMaterialDatePicker('setMaxDate', moment(localStorage.getItem('currentTripEndDate')));
+  $('#itemEndAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' });
+  $('#itemStartAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' }).on('change', function(e, date){
+    $('#itemEndAt').bootstrapMaterialDatePicker('setMinDate', date);
+    $('#itemEndAt').bootstrapMaterialDatePicker('setMaxDate', moment(localStorage.getItem('currentTripEndDate')));
+  });
+}
+
+$('#tripStartAt').bootstrapMaterialDatePicker('setMinDate', moment());
+$('#tripEndAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' });
+$('#tripStartAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' }).on('change', function(e, date){
+  $('#tripEndAt').bootstrapMaterialDatePicker('setMinDate', date);
+});
+
+//tripDateTime
+$('#placeStartAt').bootstrapMaterialDatePicker('setMinDate', moment(localStorage.getItem('currentTripStartDate')));
+$('#placeStartAt').bootstrapMaterialDatePicker('setMaxDate', moment(localStorage.getItem('currentTripEndDate')));
+$('#placeEndAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' });
+$('#placeStartAt').bootstrapMaterialDatePicker({ weekStart : 0, format : 'YYYY/MM/DD HH:mm' }).on('change', function(e, date){
+  $('#placeEndAt').bootstrapMaterialDatePicker('setMinDate', date);
+  $('#placeEndAt').bootstrapMaterialDatePicker('setMaxDate', moment(localStorage.getItem('currentTripEndDate')));
+});
+
+function sortByKey(array, key) {
+    return array.sort(function(a, b) {
+        var x = a[key]; var y = b[key];
+        return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+    });
+}
 
 initApp();
 
@@ -507,7 +604,6 @@ function initMap() {
     $('#trip_list_select').html(list_trips);
     infowindow.open(map, marker);
     $('.add_place').on('click', function(){
-      console.info('clicked', this);
       app.addPlace(place);
     });
   });

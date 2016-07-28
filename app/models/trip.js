@@ -16,13 +16,15 @@ var tripSchema = mongoose.Schema({
     	place_url    : String
     }],
     items		: [{
-    	place_id	: String,
-	    startAt     : Date,
-	    endAt   	: Date,
-	    description : String,
-	    category	: String,
-	    cost		: String,
-	    transport	: [{
+    	place_id		: String,
+	    startAt     	: Date,
+	    endAt   		: Date,
+	    description 	: String,
+	    category_id		: String,
+	    category_name   : String,
+        category_icon   : String,
+	    cost			: Number,
+	    transport		: [{
 	    	startAt     : Date,
 			departure	: String,
 			arrival		: String,
